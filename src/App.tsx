@@ -1,24 +1,31 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import MapView from './components/MapView'
 import OnboardingOverlay from './components/OnboardingOverlay'
 import DestinationPicker from './components/DestinationPicker'
 import DirectionsCard from './components/DirectionsCard'
 import ARLauncherModal from './components/ARLauncherModal'
+import GamificationModal from './components/GamificationModal'
+import QRScannerModal from './components/QRScannerModal'
 import { findRoute, type RouteResult } from './utils/pathfinding'
 import { MOONSHOT_2026_CONFIG } from './data/venueConfig'
 import { type POIItem, type WhiteLabelVenueConfig } from './types/venueConfig'
+import { useGamification } from './hooks/useGamification'
 
 export default function App() {
-  // Configurable White-Label Venue Engine State
   const [venueConfig] = useState<WhiteLabelVenueConfig>(MOONSHOT_2026_CONFIG)
+
+  // Gamification Hook
+  const { state: gameState, recordCheckIn, getLeaderboard, allBadges } = useGamification()
 
   const [selectedPOI, setSelectedPOI] = useState<POIItem | null>(null)
   const [isPickerOpen, setIsPickerOpen] = useState(false)
+  const [isGamificationOpen, setIsGamificationOpen] = useState(false)
+  const [isQRScannerOpen, setIsQRScannerOpen] = useState(false)
   const [activeRoute, setActiveRoute] = useState<RouteResult | null>(null)
   const [targetName, setTargetName] = useState<string>('')
   const [isAROpen, setIsAROpen] = useState(false)
 
-  // Current position (default to South Lobby junction)
+  // Current position
   const [currentLocationNodeId, setCurrentLocationNodeId] = useState<string>(
     venueConfig.defaultStartNodeId
   )
@@ -26,6 +33,27 @@ export default function App() {
   const [onboarded, setOnboarded] = useState(
     () => localStorage.getItem('moonshot-onboarded') === '1'
   )
+
+  // Deep linking detection (?zone=, ?booth=, ?dest=)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const zoneParam = params.get('zone')
+    const boothParam = params.get('booth')
+
+    if (zoneParam) {
+      const match = venueConfig.pois.find((p) => p.zoneId === zoneParam)
+      if (match) {
+        startNavigationTo(match.nodeId, match.name)
+      }
+    } else if (boothParam) {
+      const match = venueConfig.pois.find(
+        (p) => p.id.includes(boothParam) || p.nodeId.includes(boothParam)
+      )
+      if (match) {
+        startNavigationTo(match.nodeId, match.name)
+      }
+    }
+  }, [venueConfig])
 
   const dismissOnboarding = () => {
     localStorage.setItem('moonshot-onboarded', '1')
@@ -54,6 +82,12 @@ export default function App() {
     }
   }
 
+  const handleCheckIn = (nodeId: string, name: string, type: 'zone' | 'booth') => {
+    setCurrentLocationNodeId(nodeId)
+    recordCheckIn(nodeId, name, type)
+    setSelectedPOI(null)
+  }
+
   const clearRoute = () => {
     setActiveRoute(null)
     setTargetName('')
@@ -75,16 +109,26 @@ export default function App() {
           </div>
           <span className="brand-sub">{venueConfig.locationName}</span>
         </div>
-        <button
-          className="search-pill-btn"
-          onClick={() => setIsPickerOpen(true)}
-          aria-label="Search destination"
-        >
-          🔍 Search Place
-        </button>
+
+        <div className="top-nav-actions">
+          <button
+            className="qr-scan-pill-btn"
+            onClick={() => setIsQRScannerOpen(true)}
+            aria-label="Scan QR Checkin"
+          >
+            📷 Check In
+          </button>
+          <button
+            className="search-pill-btn"
+            onClick={() => setIsPickerOpen(true)}
+            aria-label="Search destination"
+          >
+            🔍 Search
+          </button>
+        </div>
       </header>
 
-      {/* Main Map Stage (With 3D Isometric Viewport) */}
+      {/* Main Map Stage */}
       <main className="map-wrap">
         <MapView
           config={venueConfig}
@@ -117,19 +161,21 @@ export default function App() {
               </button>
               <button
                 className="btn"
-                onClick={() => {
-                  setCurrentLocationNodeId(selectedPOI.nodeId)
-                  alert(`Checked in to ${selectedPOI.name}! Position updated. (+25 XP)`)
-                  setSelectedPOI(null)
-                }}
+                onClick={() =>
+                  handleCheckIn(
+                    selectedPOI.nodeId,
+                    selectedPOI.name,
+                    selectedPOI.category === 'sponsor' ? 'booth' : 'zone'
+                  )
+                }
               >
-                CHECK IN (QR)
+                CHECK IN (+50 XP)
               </button>
             </div>
           </div>
         )}
 
-        {/* Realtime Active Directions Dock (GPS Step-by-Step) */}
+        {/* Realtime Active Directions Dock */}
         {activeRoute && (
           <DirectionsCard
             route={activeRoute}
@@ -142,21 +188,21 @@ export default function App() {
 
       {/* Floating Modern HUD Dock */}
       <nav className="bottom-hud-dock">
-        <div className="hud-stat-pill">
-          XP <span className="num">25</span>
+        <div className="hud-stat-pill" onClick={() => setIsGamificationOpen(true)}>
+          XP <span className="num">{gameState.xp}</span>
         </div>
-        <div className="hud-stat-pill">
-          Badges <span className="num">1</span>
+        <div className="hud-stat-pill" onClick={() => setIsGamificationOpen(true)}>
+          Badges <span className="num">{gameState.unlockedBadgeIds.length}</span>
         </div>
         <div
           className="hud-leaderboard-btn"
-          onClick={() => alert('Leaderboard & Quests arrive in Phase 3!')}
+          onClick={() => setIsGamificationOpen(true)}
         >
-          🏆 LEADERBOARD
+          🏆 #{gameState.rank} LEADERBOARD
         </div>
       </nav>
 
-      {/* Destination Picker Modal */}
+      {/* Modals & Dialogs */}
       <DestinationPicker
         isOpen={isPickerOpen}
         config={venueConfig}
@@ -164,7 +210,20 @@ export default function App() {
         onSelect={handlePOISelect}
       />
 
-      {/* AR Navigation Viewport Preview */}
+      <GamificationModal
+        isOpen={isGamificationOpen}
+        onClose={() => setIsGamificationOpen(false)}
+        state={gameState}
+        leaderboard={getLeaderboard()}
+        allBadges={allBadges}
+      />
+
+      <QRScannerModal
+        isOpen={isQRScannerOpen}
+        onClose={() => setIsQRScannerOpen(false)}
+        onScanSuccess={(nodeId, name) => handleCheckIn(nodeId, name, 'zone')}
+      />
+
       {isAROpen && (
         <ARLauncherModal
           targetName={targetName}
@@ -172,7 +231,6 @@ export default function App() {
         />
       )}
 
-      {/* First-run Onboarding */}
       {!onboarded && <OnboardingOverlay onClose={dismissOnboarding} />}
     </div>
   )

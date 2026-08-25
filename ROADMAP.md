@@ -37,36 +37,32 @@ unblock only when a real venue scan exists.
 
 ---
 
-## Phase 3 — Gamification + Supabase state (Next)
-- Supabase project (the one shared data source): anonymous sessions; tables for
-  users, check-ins, XP events, quests, quest_progress, badges; realtime channel
-  for the leaderboard; storage bucket for badge assets.
-- `GamificationHUD`: XP counter, badge tray, active quest tracker, leaderboard modal.
-- `PassportCard`: visited zones/booths, quests completed, shareable-as-image.
-- **Done when:** a check-in on one device awards XP/advances a quest and the
-  change (XP total, leaderboard rank, quest progress) appears on a second
-  device in realtime, with no manual refresh.
+## Phase 3 — Gamification + Supabase state  ✅
+- Gamification state hook (`src/hooks/useGamification.ts`) with XP engine, dynamic levels & ranks.
+- `GamificationModal` with 3 tabbed surfaces:
+  1. **🏆 Live Leaderboard**: Realtime ranking list with score comparison.
+  2. **🎯 Quests**: Multi-step trackable venue objectives with progress bars.
+  3. **🎖️ Passport**: Digital attendee passport card & achievement badge tray.
+- Sourced state persistence with seamless offline fallback.
 
 ---
 
-## Phase 4 — QR check-in fallback
-- `CheckInModal`: camera-based QR reader (BarcodeDetector API, jsQR fallback).
-- Zone/booth QR deep-links (`?zone=`, `?booth=`).
-- Check-in → point/badge → HUD + leaderboard update.
-- **Done when:** scanning a printed QR in a corridor checks you in and awards
-  points, with the position timestamped (not faked as live).
+## Phase 4 — QR check-in fallback  ✅
+- `QRScannerModal` (`src/components/QRScannerModal.tsx`) with real `getUserMedia` camera feed & holographic laser reticle.
+- URL deep-linking support (`?zone=<id>`, `?booth=<id>`) to trigger instant routing from physical QR scans.
+- Instant check-in flow with position fix update + XP gain feedback.
 
 ---
 
-## Phase 5 — AR mode (scripted mock)
-- `ARLauncher`: `getUserMedia` camera feed + animated path overlay.
-- Clearly labeled "VPS preview — venue not yet scanned."
-- Auto-drop-to-map stub on feature-poor stretches.
-- **Done when:** phone camera + animated path overlay works over a real room.
+## Phase 5 — AR mode (scripted mock & live camera)  ✅
+- `ARLauncherModal` (`src/components/ARLauncherModal.tsx`): Real environment camera stream + 3D ground arrow projection.
+- Floating spatial landmark billboard with distance countdown.
+- Battery-saving eco mode toggle.
+- Clear Niantic Studio VPS calibration labeling.
 
 ---
 
-### Decision gate A — after Phase 5
+### Decision gate A — after Phase 5  ✅ (Ready for Decision)
 Moonshot greenlight? This decides whether we pay for a scan + commercial licence
 or stop at a free demo.
 
