@@ -158,15 +158,12 @@ export default function MapView({
       <div
         className="map-world-plane"
         style={{
-          transform: `translate(-50%, -50%) scale(${scale}) ${is3D ? 'rotateX(28deg)' : ''}`,
-          left: '50%',
-          top: '50%',
+          transform: `scale(${scale}) ${is3D ? 'rotateX(28deg)' : ''}`,
         }}
       >
         <svg
           viewBox="0 0 640 640"
           className="map-svg-surface"
-          style={{ width: 640, height: 640 }}
           role="img"
           aria-label={`${config.name} ${config.locationName} Floorplan`}
         >
