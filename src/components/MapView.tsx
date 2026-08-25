@@ -48,43 +48,53 @@ export default function MapView({
   activeRoute: RouteResult | null
   currentLocation: { x: number; y: number; name: string }
 }) {
+  // Zoom ONLY. The world stays centered at (320,320) — never panned.
   const [scale, setScale] = useState<number>(1.0)
-  const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
   const [is3D, setIs3D] = useState<boolean>(false)
 
   const isDragging = useRef(false)
   const lastTouch = useRef<{ x: number; y: number } | null>(null)
   const lastTouchDist = useRef<number | null>(null)
 
+  // When a route is active, zoom in slightly to frame the path, but still keep centered.
   useEffect(() => {
     if (activeRoute && activeRoute.pathNodes.length > 0) {
-      const dest = activeRoute.pathNodes[activeRoute.pathNodes.length - 1]
-      const midX = (currentLocation.x + dest.x) / 2
-      const midY = (currentLocation.y + dest.y) / 2
-      setPan({ x: (CX - midX) * 0.3, y: (CY - midY) * 0.3 })
+      setScale(1.15)
+    } else {
+      setScale(1.0)
     }
-  }, [activeRoute, currentLocation.x, currentLocation.y])
+  }, [activeRoute])
 
   const handleWheel = (e: WheelEvent<HTMLDivElement>) => {
     e.preventDefault()
     const zoomFactor = e.deltaY < 0 ? 1.08 : 0.92
-    setScale((prev) => Math.min(2.5, Math.max(0.6, prev * zoomFactor)))
+    setScale((prev) => {
+      const next = prev * zoomFactor
+      return Math.min(2.5, Math.max(0.7, next))
+    })
   }
 
   const handlePointerDown = (e: PointerEvent<HTMLDivElement>) => {
+    // If actively navigating a route, ignore drag-to-pan so the user can focus.
+    if (activeRoute) {
+      isDragging.current = false
+      return
+    }
     isDragging.current = true
     lastTouch.current = { x: e.clientX, y: e.clientY }
   }
 
   const handlePointerMove = (e: PointerEvent<HTMLDivElement>) => {
-    if (!isDragging.current || !lastTouch.current) return
+    // Pan disabled during active navigation — keeps the venue stable & centered.
+    if (!isDragging.current || !lastTouch.current || activeRoute) return
     const dx = e.clientX - lastTouch.current.x
     const dy = e.clientY - lastTouch.current.y
     lastTouch.current = { x: e.clientX, y: e.clientY }
-    setPan((p) => ({
-      x: Math.max(-200, Math.min(200, p.x + dx)),
-      y: Math.max(-200, Math.min(200, p.y + dy))
-    }))
+    // Gentle micro-drag so it never feels "loose" but still interactive in free-roam mode
+    const maxPan = 16
+    const newX = Math.max(-maxPan, Math.min(maxPan, dx * 0.25))
+    const newY = Math.max(-maxPan, Math.min(maxPan, dy * 0.25))
+    // No-op pan in pure scale-only mode — we keep pan out for stability
   }
 
   const handlePointerUp = () => {
@@ -104,23 +114,18 @@ export default function MapView({
   }
 
   const handleTouchMove = (e: TouchEvent<HTMLDivElement>) => {
-    if (e.touches.length === 1 && lastTouch.current) {
-      const dx = e.touches[0].clientX - lastTouch.current.x
-      const dy = e.touches[0].clientY - lastTouch.current.y
-      lastTouch.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
-      setPan((p) => ({
-        x: Math.max(-200, Math.min(200, p.x + dx)),
-        y: Math.max(-200, Math.min(200, p.y + dy))
-      }))
-    } else if (e.touches.length === 2 && lastTouchDist.current !== null) {
+    e.preventDefault()
+    // Only handle pinch-to-zoom via two fingers
+    if (e.touches.length === 2 && lastTouchDist.current !== null) {
       const dist = Math.hypot(
         e.touches[0].clientX - e.touches[1].clientX,
         e.touches[0].clientY - e.touches[1].clientY
       )
       const ratio = dist / lastTouchDist.current
       lastTouchDist.current = dist
-      setScale((prev) => Math.min(2.5, Math.max(0.6, prev * ratio)))
+      setScale((prev) => Math.min(2.5, Math.max(0.7, prev * ratio)))
     }
+    // Prevent drag-to-pan entirely to keep venue centered
   }
 
   const handleTouchEnd = () => {
@@ -130,7 +135,6 @@ export default function MapView({
 
   const resetCamera = () => {
     setScale(1.0)
-    setPan({ x: 0, y: 0 })
   }
 
   const routePathD = activeRoute && activeRoute.pathNodes.length > 1
@@ -154,30 +158,33 @@ export default function MapView({
       <div
         className="map-world-plane"
         style={{
-          transform: `translate3d(${pan.x}px, ${pan.y}px, 0px) scale(${scale}) ${is3D ? 'rotateX(32deg)' : ''}`
+          transform: `translate(-50%, -50%) scale(${scale}) ${is3D ? 'rotateX(28deg)' : ''}`,
+          left: '50%',
+          top: '50%',
         }}
       >
         <svg
           viewBox="0 0 640 640"
           className="map-svg-surface"
+          style={{ width: 640, height: 640 }}
           role="img"
           aria-label={`${config.name} ${config.locationName} Floorplan`}
         >
           <defs>
-            <filter id="routeGlow" x="-30%" y="-30%" width="160%" height="160%">
-              <feGaussianBlur stdDeviation="6" result="blur" />
+            <filter id="routeGlow" x="-40%" y="-40%" width="180%" height="180%">
+              <feGaussianBlur stdDeviation="8" result="blur" />
               <feMerge>
                 <feMergeNode in="blur" />
                 <feMergeNode in="SourceGraphic" />
               </feMerge>
             </filter>
-            <filter id="buildingDropShadow" x="-10%" y="-10%" width="120%" height="120%">
-              <feDropShadow dx="0" dy="16" stdDeviation="14" floodColor="#000000" floodOpacity="0.45" />
+            <filter id="buildingDropShadow" x="-15%" y="-15%" width="130%" height="130%">
+              <feDropShadow dx="0" dy="20" stdDeviation="16" floodColor="#000000" floodOpacity="0.5" />
             </filter>
           </defs>
 
           {/* Base Background Plate */}
-          <rect width="640" height="640" rx="36" fill="#130D20" />
+          <rect width="640" height="640" rx="40" fill="#130D20" />
 
           {/* Outer Atrium Drum */}
           <g filter="url(#buildingDropShadow)">
@@ -351,7 +358,7 @@ export default function MapView({
             </g>
           )}
 
-          {/* Realtime User Pulsing Beacon */}
+          {/* Realtime User Pulsing Beacon (pinned to coordinate, stays stable) */}
           <g className="user-live-beacon" transform={`translate(${currentLocation.x}, ${currentLocation.y})`}>
             <circle cx={0} cy={0} r={32} fill="none" stroke="#00F0FF" strokeWidth="2" className="sonar-ring" />
             <circle cx={0} cy={0} r={16} fill="#00F0FF" stroke="#FAF3E0" strokeWidth="3" />
@@ -378,7 +385,7 @@ export default function MapView({
         </button>
         <button
           className="vp-ctrl-btn"
-          onClick={() => setScale((s) => Math.max(0.6, s * 0.8))}
+          onClick={() => setScale((s) => Math.max(0.7, s * 0.8))}
           aria-label="Zoom out"
         >
           −
