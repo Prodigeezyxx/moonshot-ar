@@ -1,115 +1,107 @@
 import { useState } from 'react'
-import { ZONES, BOOTHS } from '../data/venue'
-
-export interface Destination {
-  id: string
-  name: string
-  nodeId: string
-  type: 'zone' | 'booth'
-  color?: string
-  subtitle?: string
-}
-
-const DESTINATIONS: Destination[] = [
-  { id: 'main-bowl', name: 'Main Bowl (Stage)', nodeId: 'zone-main-stage', type: 'zone', color: '#3F0F8A', subtitle: 'Hero Keynote & AI Conf' },
-  { id: 'hall-xyz', name: 'Hall XYZ Exhibition', nodeId: 'zone-hall-xyz', type: 'zone', color: '#2E9D8F', subtitle: 'Exhibition & Demo Stalls' },
-  { id: 'startup-festival', name: 'Startup Festival Arena', nodeId: 'zone-startup-festival', type: 'zone', color: '#E85D3F', subtitle: 'Pitch Stage & Showcase' },
-  { id: 'studios', name: 'Studios 2 & 3', nodeId: 'zone-studios', type: 'zone', color: '#9AD5B1', subtitle: 'Workshops & Breakouts' },
-  { id: 'grey', name: 'Grey Finance', nodeId: 'booth-grey', type: 'booth', subtitle: 'Headline Sponsor • North Atrium' },
-  { id: 'sabi', name: 'Sabi Stand', nodeId: 'booth-sabi', type: 'booth', subtitle: 'Sponsor Booth • East Atrium' },
-  { id: 'accrue', name: 'Accrue Stand', nodeId: 'booth-accrue', type: 'booth', subtitle: 'Sponsor Booth • South-East' },
-  { id: 'breet', name: 'Breet Stand', nodeId: 'booth-breet', type: 'booth', subtitle: 'Sponsor Booth • South-West' },
-  { id: 'sentz', name: 'Sentz Stand', nodeId: 'booth-sentz', type: 'booth', subtitle: 'Sponsor Booth • West Atrium' }
-]
+import { type WhiteLabelVenueConfig, type POIItem } from '../types/venueConfig'
 
 export default function DestinationPicker({
   isOpen,
+  config,
   onClose,
   onSelect
 }: {
   isOpen: boolean
+  config: WhiteLabelVenueConfig
   onClose: () => void
-  onSelect: (dest: Destination) => void
+  onSelect: (poi: POIItem) => void
 }) {
   const [query, setQuery] = useState('')
-  const [filter, setFilter] = useState<'all' | 'zone' | 'booth'>('all')
+  const [activeCategory, setActiveCategory] = useState<string>('all')
 
   if (!isOpen) return null
 
-  const filtered = DESTINATIONS.filter((d) => {
-    const matchType = filter === 'all' || d.type === filter
-    const matchQuery =
-      d.name.toLowerCase().includes(query.toLowerCase()) ||
-      (d.subtitle && d.subtitle.toLowerCase().includes(query.toLowerCase()))
-    return matchType && matchQuery
+  const categories = [
+    { id: 'all', label: 'All Places' },
+    { id: 'stage', label: 'Stages & Arenas' },
+    { id: 'sponsor', label: 'Sponsor Booths' },
+    { id: 'workshop', label: 'Workshops' },
+    { id: 'exhibition', label: 'Exhibitions' }
+  ]
+
+  const filtered = config.pois.filter((poi) => {
+    const matchesCat = activeCategory === 'all' || poi.category === activeCategory
+    const matchesQuery =
+      poi.name.toLowerCase().includes(query.toLowerCase()) ||
+      (poi.subtitle && poi.subtitle.toLowerCase().includes(query.toLowerCase())) ||
+      (poi.description && poi.description.toLowerCase().includes(query.toLowerCase()))
+    return matchesCat && matchesQuery
   })
 
   return (
     <div className="picker-modal-backdrop" onClick={onClose}>
       <div className="picker-modal" onClick={(e) => e.stopPropagation()}>
         <div className="picker-header">
-          <h3>CHOOSE DESTINATION</h3>
+          <div className="picker-title-block">
+            <h3>EXPLORE VENUE</h3>
+            <span className="picker-venue-tag">{config.name} • {config.locationName}</span>
+          </div>
           <button className="picker-close-btn" onClick={onClose} aria-label="Close">
             ✕
           </button>
         </div>
 
-        <div className="picker-search-wrap">
+        <div className="picker-search-bar">
+          <span className="search-icon">🔍</span>
           <input
             type="text"
-            className="picker-search-input"
-            placeholder="Search zones, stages, or sponsors..."
+            className="picker-input"
+            placeholder="Search stages, booths, keynotes..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             autoFocus
           />
+          {query && (
+            <button className="clear-btn" onClick={() => setQuery('')}>
+              ✕
+            </button>
+          )}
         </div>
 
-        <div className="picker-filter-chips">
-          <button
-            className={`chip ${filter === 'all' ? 'active' : ''}`}
-            onClick={() => setFilter('all')}
-          >
-            All Places
-          </button>
-          <button
-            className={`chip ${filter === 'zone' ? 'active' : ''}`}
-            onClick={() => setFilter('zone')}
-          >
-            Zones &amp; Stages
-          </button>
-          <button
-            className={`chip ${filter === 'booth' ? 'active' : ''}`}
-            onClick={() => setFilter('booth')}
-          >
-            Sponsor Booths
-          </button>
+        <div className="picker-categories-scroll">
+          {categories.map((c) => (
+            <button
+              key={c.id}
+              className={`cat-chip ${activeCategory === c.id ? 'active' : ''}`}
+              onClick={() => setActiveCategory(c.id)}
+            >
+              {c.label}
+            </button>
+          ))}
         </div>
 
-        <div className="picker-list">
+        <div className="picker-results-list">
           {filtered.length === 0 ? (
-            <div className="picker-empty">No locations found matching &quot;{query}&quot;</div>
+            <div className="picker-empty-state">No locations found for &quot;{query}&quot;</div>
           ) : (
-            filtered.map((d) => (
+            filtered.map((poi) => (
               <div
-                key={d.id}
-                className="picker-item"
+                key={poi.id}
+                className="poi-list-item"
                 onClick={() => {
-                  onSelect(d)
+                  onSelect(poi)
                   onClose()
                 }}
               >
-                <div
-                  className="picker-item-icon"
-                  style={{ backgroundColor: d.color || '#3F0F8A' }}
-                >
-                  {d.type === 'zone' ? '📍' : '⭐'}
+                <div className={`poi-category-badge cat-${poi.category}`}>
+                  {poi.category === 'sponsor' ? '⭐' : poi.category === 'stage' ? '🎙️' : '📍'}
                 </div>
-                <div className="picker-item-details">
-                  <div className="picker-item-name">{d.name}</div>
-                  {d.subtitle && <div className="picker-item-sub">{d.subtitle}</div>}
+                <div className="poi-item-body">
+                  <div className="poi-title-row">
+                    <span className="poi-name">{poi.name}</span>
+                    {poi.boothNumber && <span className="poi-booth-tag">{poi.boothNumber}</span>}
+                  </div>
+                  {poi.subtitle && <div className="poi-sub">{poi.subtitle}</div>}
                 </div>
-                <div className="picker-item-action">Go →</div>
+                <div className="poi-route-btn">
+                  Navigate →
+                </div>
               </div>
             ))
           )}
