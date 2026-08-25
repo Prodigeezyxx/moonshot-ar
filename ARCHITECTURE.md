@@ -1,9 +1,12 @@
 # Moonshot Wayfinder 2026 — System Design & Engineering Specification
 
-Version 3 (PWA-first). This is the single source of truth: the platform
-correction, the chosen PWA stack, the positioning/data/routing/backend/frontend
-design, the VPS suitability analysis, the scan plan, the QR fallback, and the
-cost model. The roadmap lives in `ROADMAP.md`.
+Version 4 (merged). This is the single source of truth. It reconciles three
+sources — the master spec (incl. the brand system), the fully-dictated
+Appendix B (VPS positioning + data layer v2), and the moodboard transcript —
+into the PWA-first architecture. The platform correction, chosen stack,
+positioning/data/routing/backend/frontend design, VPS suitability, scan plan,
+QR fallback, cost model, and the merge decisions all live here. The roadmap
+lives in `ROADMAP.md`.
 
 ---
 
@@ -39,6 +42,8 @@ Implications:
   not a long-term bet**.
 - The eventual VPS integration targets **Niantic Studio**, not 8th Wall.
 - No budget committed to 8th Wall tooling/licences at this stage.
+- Wherever the source docs below say "8th Wall," read "Niantic Studio" — the
+  v2 positioning text predates the correction.
 
 ---
 
@@ -46,12 +51,12 @@ Implications:
 
 The requirement is a **mobile-first, installable PWA** — feels like a native
 app with no app-store step, works offline, and holds the camera/AR mode behind
-the same shell. This is the stack that best serves that:
+the same shell.
 
 | Layer | Choice | Why |
 |-------|--------|-----|
 | Build tool | **Vite** | Fast dev server, first-class PWA plugin, trivial static deploy to Cloudflare Pages/Vercel |
-| UI framework | **React** (+ TypeScript) | The component list (§6) is 7 components sharing one state tree; React context covers it without a heavy framework. TS pays for itself in the A*/graph/transform code where a wrong type = a wrong route |
+| UI framework | **React** (+ TypeScript) | The component list (§6) is ~7 components sharing one state tree; React context covers it without a heavy framework. TS pays for itself in the A*/graph/transform code where a wrong type = a wrong route |
 | PWA | **vite-plugin-pwa** (Workbox) | Generates the Web App Manifest + service worker automatically; offline precache, install prompt, splash + icons |
 | Routing (in-app) | **react-router-dom** | Two surfaces (Map mode / AR mode) + `?zone=` / `?booth=` deep-links for the QR fallback |
 | Map | **Hand-authored SVG** | Lightweight, crisp on every DPI, matches the "vectorized floorplan" requirement; no heavy canvas lib |
@@ -77,37 +82,89 @@ Two things worth flagging up front (explained, not surprising):
 
 ---
 
-## 2. Positioning layer
+## 2. Positioning layer (Appendix B.1, merged)
 
-**Primary — VPS (Niantic Scaniverse + Niantic Studio).**
-- One Scaniverse scan per zone (Main Bowl, Hall XYZ, Startup Festival Floor,
-  Studio 2, Studio 3); a few minutes of camera sweep each.
-- Cloud-processed into a VPS map; centimetre-accurate localization once scanned.
-- Delivered as browser AR — no app download.
+**Primary — VPS via Niantic Scaniverse + Niantic Studio.**
+
+| Aspect | Detail |
+|--------|--------|
+| Scan coverage | One Scaniverse scan per zone: Main Bowl, Hall XYZ, Startup Festival Floor, Studio 2, Studio 3 |
+| Scan effort | A few minutes of camera sweep per zone |
+| Processing | Cloud-processed into a VPS map; centimetre-accurate localization once scanned |
+| Delivery | Browser-based AR (Niantic Studio, formerly 8th Wall) — no app download required |
+| Hardware | Zero hardware installed at the venue |
+
+**Why VPS over beacons/GPS:**
+- No BLE beacon procurement or installation cycle.
+- No WiFi/magnetic fingerprinting calibration.
+- No PDR (pedestrian dead reckoning) drift accumulation.
+- Works in the browser — attendees scan a QR, grant camera permission, and AR
+  activates instantly.
 
 **Fallback — QR check-in nodes.**
-- One per zone/booth entrance; covers unscanned areas, poor lighting, and the
-  feature-poor corridors (long identical walls break visual matching).
-- Doubles as the gamification trigger (points, badges), independent of
-  positioning accuracy.
 
-**Explicitly dropped:** BLE beacons, WiFi/magnetic fingerprinting, PDR — VPS +
-QR covers the need with zero hardware installed at the venue.
+| Aspect | Detail |
+|--------|--------|
+| Placement | One per zone/booth entrance |
+| Purpose | Covers unscanned areas, poor lighting, feature-poor corridors (long identical walls break visual matching) |
+| Dual role | Doubles as the gamification trigger (points, badges), independent of positioning accuracy |
+| UX | Attendee scans QR → app records check-in → updates "You Are Here" to that node |
+
+**Explicitly dropped (v1 → v2):**
+- ❌ BLE beacons
+- ❌ WiFi/magnetic fingerprinting
+- ❌ PDR (pedestrian dead reckoning)
+
+Coverage rationale: **VPS + QR fallback covers the same positioning need with
+zero hardware installed at the venue.**
+
+> This resolves the earlier beacon contradiction: the moodboard's "Beacon
+> Coverage" dashboard (page 10) is confirmed outdated/aspirational v1 concept
+> art. The written v2 decision — no beacons — is the real one.
 
 ---
 
-## 3. Data layer
+## 3. Data layer (Appendix B.2, merged)
 
-- **Venue graph** — nodes (entrances, junctions, booths, zone anchors) +
-  weighted edges, hand-authored from the floorplan.
-- **VPS sites** — one Scaniverse Site per zone, each with its own coordinate
-  space; a manual transform table maps each site origin into the shared
-  floorplan coordinate system.
+- **Venue graph** — unchanged from v1: nodes (entrances, junctions, booths,
+  zone anchors) + weighted edges, hand-authored from the floorplan.
+- **VPS sites** — one Scaniverse Site per zone, each defining its own
+  coordinate space; a manual transform table maps each site's origin back into
+  the shared floorplan coordinate system.
+
+| Field | Description |
+|-------|-------------|
+| `site_id` | One per zone scan |
+| `scaniverse_site_url` | Link to cloud-processed VPS map |
+| `coordinate_space` | Local origin defined by the scan |
+| `floorplan_transform` | Manual transform table mapping the site's origin back into the shared floorplan coordinate system |
+| `status` | `pending_scan → processing → live → degraded` |
+
+```json
+{
+  "vps_sites": [
+    {
+      "site_id": "vps_main_bowl",
+      "zone_id": "main",
+      "scaniverse_site_url": "https://scaniverse.com/site/...",
+      "local_origin": { "lat": 0, "lng": 0, "alt": 0 },
+      "floorplan_transform": {
+        "scale": 1.0,
+        "rotation_deg": 0,
+        "offset": { "x": 200, "y": 110 }
+      },
+      "status": "live",
+      "last_calibrated": "2026-10-20T00:00:00Z"
+    }
+  ]
+}
+```
+
 - **User state** — check-ins, XP, quest progress, badges, last-known position.
   All of it lives in **one shared Supabase store** (anonymous session, realtime
-  DB, storage for badge assets) — this is the single source of truth every
-  surface (map, HUD, leaderboard, passport) reads from, so a check-in on one
-  device is reflected everywhere else within the realtime sync window.
+  DB, storage for badge assets) — the single source of truth every surface
+  (map, HUD, leaderboard, passport) reads from, so a check-in on one device is
+  reflected everywhere else within the realtime sync window.
 
 ---
 
@@ -124,6 +181,17 @@ A* over the node graph. Current-node lookup has two sources, never mixed up:
 
 Static site (Cloudflare Pages/Vercel) + Supabase for realtime state. Niantic
 Studio hosts the AR runtime and hands position data back via its JS API.
+
+**Backend decision (merge, see §6b for the conflict it resolves):** the master
+spec's §4 architecture shows a custom API Gateway + PostgreSQL + Redis +
+WebSocket + S3 with a Wayfinder/Session/Gamification service split. This is
+**not** a contradiction with Supabase — Supabase *is* managed Postgres with a
+Realtime pub/sub layer over logical replication, which is functionally the
+Postgres + Redis (live state) + WebSocket combo the master spec describes.
+Decision: **Supabase for Phase 1–3** (zero ops, free tier). The custom
+Postgres + Redis + gateway stack is the explicit fallback answer *if* load
+testing at the master spec's 5,700-concurrent-user target shows Supabase's
+free/pro tier can't keep up.
 
 ---
 
@@ -162,12 +230,6 @@ Two surfaces, one shell. Mobile-first PWA, installable via manifest.
 - Single "point your camera to find your spot" moment on first entry to a
   scanned zone. No account, no multi-step tutorial.
 
-**Visual identity** (derived from the existing Moonshot 2026 venue map)
-- Cream background, purple/green/orange zone-coded blocks, bold condensed
-  display type for headlines, pill-shaped labels for booths/tags.
-- Zone colors carry through to badges and the leaderboard — same color means the
-  same thing everywhere.
-
 **Component list**
 - `MapView` — SVG floorplan, pins, route line, you-are-here.
 - `ARLauncher` — camera view, AR route overlay.
@@ -179,29 +241,82 @@ Two surfaces, one shell. Mobile-first PWA, installable via manifest.
 
 State: React context — no heavier state framework needed at this scale.
 
-## 6a. Brand system (pending — placeholder)
+---
 
-> **Not yet populated with real values.** Multiple paste attempts to capture
-> the actual color palette (Token / Hex / Usage table) did not survive
-> transfer — only headers arrived, no row data. Rather than fabricate hex
-> codes, font names, or logo specs, this section is left as a structural
-> placeholder until the real brand doc/image/link comes through. Do not treat
-> anything below as final — it names the fields to fill, not values.
+## 6a. Brand system (from master spec §3 — now confirmed, not a placeholder)
+
+Sourced from the authoritative master spec's observed brand system. These
+replace the earlier "pending" placeholder.
+
+### Color palette
 
 | Token | Hex | Usage |
 |-------|-----|-------|
-| _pending_ | _pending_ | _pending_ |
+| Moonshot Purple | `#3F0F8A` | Primary surface, headers, nav bar |
+| Cream / Bone | `#FAF3E0` | Canvas background, cards, kiosk bezel |
+| Action Yellow | `#F5A623` | Primary CTA buttons only |
+| Mint Green | `#9AD5B1` | Secondary accent, success states |
+| Deep Teal-Green | `#2E9D8F` | Zone fills (policy, climate tracks) |
+| Ink / Near-black | `#111827` | Body text, icons, outlines |
+| Lavender Tint | `#EDE7F9` | Light zone fills, hover states |
+| Signal Orange | `#E85D3F` | Startup Festival zone, alerts |
 
-Fields still needed:
-- Color tokens (primary/secondary/accent + per-zone colors — purple/green/orange
-  per the venue map, per §6 "Visual identity")
-- Typography (display/body typefaces, weights)
-- Logo usage rules
-- Spacing/radius/elevation tokens if a formal design system exists
+### Typography
+- Headlines: **Archivo Black** (bold, italic, tight tracking, ALL CAPS).
+- UI / Body: **Poppins** (SemiBold labels, Regular body).
+- Numerals: bold circular badge pattern (dark circle, cream numeral).
 
-Once supplied (image, doc link, or typed values), this section replaces the
-placeholder table and the "Visual identity" notes in §6 get cross-referenced
-here as the single source for brand tokens.
+### Shape language
+- **Seigaiha** (scalloped wave) pattern — signature motif for footers,
+  dividers, kiosk die-cut.
+- Card radii: **20–28px**.
+- Buttons: **3px solid ink border**, high-contrast fill, rounded-pill or 16px
+  radius.
+- Shadows: **hard-offset only** (no blur) — flat/poster aesthetic.
+
+Zone colors on the map carry through to badges and the leaderboard, so the
+color coding means the same thing everywhere in the app. Branding confirmed by
+the moodboard: "Moonshot 2026 · Courage & Conviction," by TechCabal x Grey
+(Grey = Headline Sponsor), "powered by realmspace" (Floats XR as the named
+technology partner).
+
+---
+
+## 6b. Scope reconciliation (merge decisions)
+
+Three flagged conflicts, resolved transparently here:
+
+1. **Backend (Supabase vs Postgres+Redis+WebSocket)** — not a real
+   contradiction (see §5). Supabase = managed Postgres + Realtime; kept for
+   Phase 1–3, with the custom stack as the load-test fallback.
+
+2. **Beacons (moodboard "Beacon Coverage" dashboard vs master spec §8.2 "no
+   beacons")** — resolved by Appendix B.1's "Explicitly dropped: BLE beacons."
+   Beacons were deliberately dropped in v2; the moodboard render is outdated
+   v1 concept art.
+
+3. **New scope from the moodboard** (not in the master spec) — folded in as
+   **backlog / Phase 2+**, not Phase 1:
+   - **AI Totem** conversational concierge ("Ask Moonshot") — natural-language
+     Q&A, route/schedule.
+   - **Smart Entry** badge check-in arches (personalized welcome).
+   - **Digital Twin** — live venue ops dashboard.
+   - **Expanded zone list** — AI Development, Climate Solutions, Creative
+     Economy, Enterprise, Govt & Policy (alongside Fintech, Startup Festival);
+     plus **FUEL** as a distinct deal-room/investor-meeting zone.
+   - Physical gamified activations — arcade "Pitch Game" and "Table Soccer —
+     Courage & Conviction Cup" (live scoreboard).
+
+Additional master-spec scope (also backlog / Phase 2+, not Phase 1): the
+session/speaker/track browsing system (9 tracks, day toggle, live sessions),
+kiosk hardware (3× 32" portrait touchscreens, lockdown, idle timeout), Whova
+API + TechCabal CMS integrations, JWT auth, and the full REST + WebSocket API
+surface. Phase 1 stays deliberately narrow (map + routing + quests + PWA shell).
+
+Note on sponsor roster: the master spec's directions example mentions
+"Raenest" and "Flutterwave" — treat as illustrative placeholder examples, not
+a confirmed roster expansion. The confirmed atrium anchors remain the five
+named booths (Grey, Sabi, Accrue, Breet, Sentz).
 
 ---
 

@@ -14,10 +14,14 @@ Status: **planning complete, not yet built.** See `ARCHITECTURE.md` and
 
 - `ARCHITECTURE.md` — System Design & Engineering Specification: platform
   correction (8th Wall → Niantic Studio), design principles, chosen PWA stack
-  and rationale, positioning/data/routing/backend/frontend design, venue
-  geometry, VPS suitability, scan plan, QR fallback, cost model.
-- `ROADMAP.md` — phased build plan (Phase 0–7) with decision gates and
-  "done when" criteria for each phase.
+  and rationale, positioning (VPS + QR fallback, full Appendix B), data layer
+  (venue graph + VPS Sites schema), routing/backend/frontend design, brand
+  system, scope reconciliation, venue geometry, VPS suitability, scan plan,
+  QR fallback, cost model.
+- `ROADMAP.md` — phased build plan (Phase 0–7) with decision gates,
+  "done when" criteria per phase, and a merged backlog.
+- `docs/raw/` — the source documents verbatim (master spec + moodboard
+  transcript), preserved for reconciliation.
 
 ## Design principles (see ARCHITECTURE.md §0a)
 
@@ -37,6 +41,15 @@ react-router-dom, hand-authored SVG floorplan, hand-rolled A* routing,
 Supabase (realtime state/backend), Cloudflare Pages/Vercel (hosting).
 AR today is a scripted camera-preview mock; Niantic Studio VPS lands once a
 real Scaniverse scan of the venue exists.
+
+## Brand system (see ARCHITECTURE.md §6a)
+
+Confirmed from the master spec — Moonshot Purple `#3F0F8A`, Cream `#FAF3E0`,
+Action Yellow `#F5A623`, Mint `#9AD5B1`, Deep Teal `#2E9D8F`, Ink `#111827`,
+Lavender `#EDE7F9`, Signal Orange `#E85D3F`. Headlines in Archivo Black, body
+in Poppins; seigaiha wave motif, 3px ink borders, hard-offset shadows.
+Event: "Moonshot 2026 · Courage & Conviction," by TechCabal x Grey (Headline
+Sponsor), "powered by realmspace."
 
 ## Platform note
 
@@ -62,6 +75,7 @@ on approval — see `ROADMAP.md` for the full phase breakdown and decision gates
 ```
 moonshot-ar/
 ├── ARCHITECTURE.md   # full system design & engineering spec
-├── ROADMAP.md        # phased build plan
-└── README.md         # this file
+├── ROADMAP.md        # phased build plan + backlog
+├── README.md         # this file
+└── docs/raw/         # source docs verbatim (master spec + moodboard)
 ```

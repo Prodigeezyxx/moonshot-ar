@@ -17,6 +17,10 @@ unblock only when a real venue scan exists.
 - Installable: manifest, service worker, icons (192/512), splash.
 - SVG floorplan of the National Theatre geometry — concentric rings, D-shaped
   bowl, central stage, radial corridors; 5 zones + 5 sponsor booths placed.
+- Apply the real brand tokens (ARCHITECTURE.md §6a): Moonshot Purple
+  `#3F0F8A` surfaces, Cream `#FAF3E0` canvas, Action Yellow `#F5A623` CTAs,
+  Archivo Black headlines / Poppins body, seigaiha footer motif, 3px ink
+  borders, hard-offset shadows.
 - `MapView`: pan/zoom, zone/booth pins, "you are here" dot (QR-sourced for now).
 - `OnboardingOverlay`: first-run "point your camera" prompt.
 - **Done when:** `npm run dev` → installable PWA shows the floorplan on a phone.
@@ -82,6 +86,32 @@ or stop at a free demo.
 - Commercial licence if public/branded (~$700/mo — confirm live pricing).
 - Print zone/booth QR codes; deploy to Cloudflare Pages/Vercel.
 - **Done when:** live at the event.
+
+---
+
+## Backlog (merged scope — not Phase 1)
+
+Confirmed scope from the moodboard + master spec that is deliberately deferred
+behind the core wayfinding loop. Items are added here, not to Phase 1, so Phase
+1 stays narrow.
+
+**From the moodboard (aspirational, confirm before building):**
+- **AI Totem** conversational concierge ("Ask Moonshot") — NL Q&A + route/schedule.
+- **Smart Entry** badge check-in arches (personalized welcome).
+- **Digital Twin** — live venue ops dashboard.
+- Expanded zone list: AI Development, Climate Solutions, Creative Economy,
+  Enterprise, Govt & Policy; **FUEL** deal-room zone.
+- Physical activations: arcade "Pitch Game", "Table Soccer — Courage &
+  Conviction Cup" (live scoreboard).
+
+**From the master spec (session/kiosk/integration scope):**
+- Session/speaker/track browser (9 tracks, day toggle, live sessions).
+- Kiosk hardware mode (3× 32" portrait touchscreens, lockdown, 45s idle timeout).
+- Whova API + TechCabal CMS integration; JWT auth; full REST + WebSocket API.
+- Analytics dashboard (heatmaps, popular routes), post-event sponsor report.
+
+These slot in as Phase 2+/post-launch increments and are re-scoped at Decision
+gate A — see ARCHITECTURE.md §6b.
 
 ---
 

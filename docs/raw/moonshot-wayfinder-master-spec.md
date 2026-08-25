@@ -454,15 +454,15 @@ Status: Architecture v2 — replaces beacon/GPS positioning with visual position
 
 > ⚠️ TRUNCATED IN TRANSIT — the table under B.1 arrived as header-only
 > ("Table AspectDetail") with the row data cut off, same corruption pattern as
-> the earlier color-palette pastes. The rest of Appendix B (B.2 onward, if it
-> exists) did not arrive either. This mirrors content already captured
-> elsewhere in this project (see ARCHITECTURE.md §§0b, 2, 8, 9, 10, 11 and the
-> ROADMAP.md phase list), which was sourced from three earlier, intact pastes
-> covering: the 8th Wall → Niantic Studio correction and costs, VPS zone
-> suitability for the National Theatre geometry, and the original v2
-> architecture text (positioning/data/routing/backend/frontend). Treat those
-> sections as the reliable record of Appendix B's content until/unless the
-> user resends the missing table intact.
+> the earlier color-palette pastes.
+>
+> **UPDATE (2026-08-24):** the missing Appendix B content was subsequently
+> recovered — re-sent by the user line-by-line (B.1 VPS positioning table,
+> "why VPS over beacons/GPS", the QR fallback table, the "explicitly dropped"
+> list incl. PDR, and the B.2 VPS Sites schema + JSON). It has been merged in
+> full into `ARCHITECTURE.md` §§2–3 (Version 4). Treat ARCHITECTURE.md as the
+> authoritative record of Appendix B; this raw file's B.1 table placeholder is
+> superseded.
 
 ---
 
