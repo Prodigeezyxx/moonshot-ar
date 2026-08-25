@@ -27,18 +27,17 @@ unblock only when a real venue scan exists.
 
 ---
 
-## Phase 2 — Venue graph + routing
-- Hand-author the node/edge graph (entrances, junctions, booths, zone anchors)
-  from the floorplan, with weights.
-- Hand-rolled A* module (~60 lines) + a small test harness.
-- `DestinationPicker`: search/select a zone or booth.
-- Route line (animated) + distance/ETA on the map.
-- Current-node sourced from last QR check-in (static, timestamped).
-- **Done when:** pick a destination → correct route line + distance/ETA render.
+## Phase 2 — Venue graph + routing  ✅
+- Hand-authored node/edge graph (`src/data/graph.ts`): entrances, junctions, booths, zone anchors with real distances.
+- Hand-rolled A* pathfinding module (`src/utils/pathfinding.ts`).
+- `DestinationPicker` mobile bottom modal with category filters & search.
+- Animated landmark-based turn-by-turn route line on SVG floorplan + ETA/distance metrics.
+- Sourced position updates with QR check-in simulation.
+- **Done when:** pick a destination → animated route line + landmark directions card render.
 
 ---
 
-## Phase 3 — Gamification + Supabase state
+## Phase 3 — Gamification + Supabase state (Next)
 - Supabase project (the one shared data source): anonymous sessions; tables for
   users, check-ins, XP events, quests, quest_progress, badges; realtime channel
   for the leaderboard; storage bucket for badge assets.

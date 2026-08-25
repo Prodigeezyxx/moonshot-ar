@@ -11,10 +11,16 @@
 
   --font-display: 'Archivo Black', 'Arial Black', sans-serif;
   --font-body: 'Poppins', system-ui, -apple-system, sans-serif;
+
+  /* Touch target sizes & borders */
+  --border-thick: 3px solid var(--ink);
+  --shadow-offset: 3px 3px 0 var(--ink);
+  --shadow-offset-lg: 4px 4px 0 var(--ink);
 }
 
 * {
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
 
 html,
@@ -22,6 +28,10 @@ body,
 #root {
   height: 100%;
   margin: 0;
+  padding: 0;
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
 }
 
 body {
@@ -29,53 +39,76 @@ body {
   color: var(--ink);
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
+  touch-action: manipulation;
 }
 
 .app {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  height: 100vh;
+  height: 100dvh;
+  position: relative;
+  overflow: hidden;
 }
 
-/* ── Header ─────────────────────────────────────────────── */
+/* ── Top Bar / Header ───────────────────────────────────── */
 .header {
   background: var(--moonshot-purple);
   color: var(--cream);
-  padding: 14px 18px;
+  padding: 12px 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  border-bottom: var(--border-thick);
+  z-index: 20;
 }
 .brand {
   font-family: var(--font-display);
-  font-size: 20px;
+  font-size: 19px;
   letter-spacing: 0.5px;
   line-height: 1.1;
 }
 .brand small {
   display: block;
   font-family: var(--font-body);
-  font-size: 11px;
-  font-weight: 600;
-  opacity: 0.85;
-}
-.header .tag {
-  font-family: var(--font-display);
   font-size: 10px;
-  border: 2px solid var(--cream);
-  border-radius: 999px;
-  padding: 5px 10px;
+  font-weight: 600;
   opacity: 0.9;
+  letter-spacing: normal;
+}
+.search-trigger-btn {
+  background: var(--action-yellow);
+  color: var(--ink);
+  border: var(--border-thick);
+  box-shadow: 2px 2px 0 var(--ink);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.search-trigger-btn:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 var(--ink);
 }
 
-/* ── Map ────────────────────────────────────────────────── */
+/* ── Map Surface ────────────────────────────────────────── */
 .map-wrap {
   flex: 1;
   position: relative;
   overflow: hidden;
   background: var(--cream);
 }
-.map-wrap svg {
+.map-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+.map-container svg {
   width: 100%;
   height: 100%;
   display: block;
@@ -85,7 +118,7 @@ body {
 
 .zone-label {
   font-family: var(--font-display);
-  font-size: 13px;
+  font-size: 12px;
   letter-spacing: 0.5px;
   pointer-events: none;
 }
@@ -95,6 +128,21 @@ body {
   font-weight: 600;
   pointer-events: none;
 }
+
+/* Animated Route Line */
+.animated-route-stroke {
+  stroke-dasharray: 12 6;
+  animation: dashFlow 1.2s linear infinite;
+}
+@keyframes dashFlow {
+  from {
+    stroke-dashoffset: 36;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
 .yah {
   animation: pulse 1.8s ease-in-out infinite;
 }
@@ -104,29 +152,62 @@ body {
     opacity: 1;
   }
   50% {
-    opacity: 0.35;
+    opacity: 0.4;
   }
+}
+
+/* Floating Map Controls */
+.map-floating-controls {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 5;
+}
+.ctrl-btn {
+  width: 44px;
+  height: 44px;
+  background: #fff;
+  border: var(--border-thick);
+  box-shadow: var(--shadow-offset);
+  border-radius: 12px;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ctrl-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: none;
 }
 
 /* ── HUD ────────────────────────────────────────────────── */
 .hud {
   background: var(--cream);
-  border-top: 3px solid var(--ink);
+  border-top: var(--border-thick);
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 14px;
+  padding: 8px 12px;
+  padding-bottom: calc(8px + env(safe-area-inset-bottom));
+  z-index: 20;
 }
 .hud-pill {
-  border: 3px solid var(--ink);
+  border: var(--border-thick);
   border-radius: 999px;
-  padding: 6px 14px;
+  padding: 6px 12px;
   font-weight: 600;
-  font-size: 13px;
+  font-size: 12px;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   background: #fff;
+  box-shadow: 2px 2px 0 var(--ink);
 }
 .hud-pill .num {
   font-family: var(--font-display);
@@ -134,44 +215,19 @@ body {
 }
 .hud-pill.accent {
   background: var(--action-yellow);
+  cursor: pointer;
+}
+.hud-pill.accent:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 var(--ink);
 }
 .hud-spacer {
   flex: 1;
 }
 
-/* ── Bottom sheet ───────────────────────────────────────── */
-.sheet {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: var(--cream);
-  border-top: 3px solid var(--ink);
-  padding: 16px 18px 20px;
-  box-shadow: 0 -8px 0 rgba(17, 24, 39, 0.15);
-  z-index: 10;
-}
-.sheet h2 {
-  font-family: var(--font-display);
-  font-size: 18px;
-  margin: 0 0 6px;
-  letter-spacing: 0.5px;
-}
-.sheet p {
-  margin: 0 0 14px;
-  font-size: 14px;
-}
-.sheet .hint {
-  font-size: 12px;
-  opacity: 0.65;
-  margin: 0 0 12px;
-}
-.sheet .row {
-  display: flex;
-  gap: 10px;
-}
+/* ── Generic Buttons ────────────────────────────────────── */
 .btn {
-  border: 3px solid var(--ink);
+  border: var(--border-thick);
   border-radius: 16px;
   padding: 12px 16px;
   font-weight: 600;
@@ -180,13 +236,302 @@ body {
   cursor: pointer;
   background: #fff;
   color: var(--ink);
+  box-shadow: var(--shadow-offset);
+  min-height: 48px;
+}
+.btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: none;
 }
 .btn.primary {
   background: var(--action-yellow);
   flex: 1;
 }
+.btn.full-width {
+  width: 100%;
+}
 
-/* ── Onboarding overlay ─────────────────────────────────── */
+/* ── Bottom Sheet (Zone/Booth Inspect) ──────────────────── */
+.sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--cream);
+  border-top: var(--border-thick);
+  padding: 16px 18px 20px;
+  box-shadow: 0 -8px 0 rgba(17, 24, 39, 0.15);
+  z-index: 25;
+  animation: slideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+.sheet-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 6px;
+}
+.sheet h2 {
+  font-family: var(--font-display);
+  font-size: 18px;
+  margin: 0;
+  letter-spacing: 0.5px;
+}
+.sheet-close-btn {
+  background: none;
+  border: none;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 4px;
+}
+.sheet p {
+  margin: 0 0 14px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.sheet .row {
+  display: flex;
+  gap: 10px;
+}
+
+/* ── Directions Card Overlay ────────────────────────────── */
+.directions-card {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  background: #fff;
+  border: var(--border-thick);
+  border-radius: 20px;
+  box-shadow: var(--shadow-offset-lg);
+  padding: 14px 16px;
+  z-index: 25;
+  max-height: 48vh;
+  display: flex;
+  flex-direction: column;
+  animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.directions-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 10px;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 8px;
+}
+.directions-title {
+  font-family: var(--font-display);
+  font-size: 16px;
+  color: var(--moonshot-purple);
+  margin-bottom: 4px;
+}
+.directions-metrics {
+  display: flex;
+  gap: 6px;
+}
+.metric-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1.5px solid var(--ink);
+}
+.metric-badge.eta {
+  background: var(--mint-green);
+}
+.metric-badge.dist {
+  background: var(--lavender);
+}
+.directions-close-btn {
+  background: var(--cream);
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.directions-steps-list {
+  overflow-y: auto;
+  flex: 1;
+  margin-bottom: 12px;
+  padding-right: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.step-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+  line-height: 1.35;
+}
+.step-num {
+  background: var(--moonshot-purple);
+  color: var(--cream);
+  font-family: var(--font-display);
+  font-size: 11px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.step-dist {
+  font-size: 11px;
+  opacity: 0.6;
+}
+
+/* ── Destination Picker Modal ───────────────────────────── */
+.picker-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.6);
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+.picker-modal {
+  background: var(--cream);
+  border-top: var(--border-thick);
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
+  padding: 18px 16px 24px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.picker-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.picker-header h3 {
+  font-family: var(--font-display);
+  font-size: 18px;
+  margin: 0;
+  color: var(--moonshot-purple);
+}
+.picker-close-btn {
+  background: #fff;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.picker-search-input {
+  width: 100%;
+  padding: 12px 14px;
+  border: var(--border-thick);
+  border-radius: 14px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  background: #fff;
+  outline: none;
+  box-shadow: 2px 2px 0 var(--ink);
+}
+.picker-filter-chips {
+  display: flex;
+  gap: 8px;
+  margin: 10px 0 12px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.chip {
+  background: #fff;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.chip.active {
+  background: var(--moonshot-purple);
+  color: var(--cream);
+}
+.picker-list {
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.picker-item {
+  background: #fff;
+  border: 2px solid var(--ink);
+  border-radius: 14px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  box-shadow: 2px 2px 0 var(--ink);
+}
+.picker-item:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 var(--ink);
+}
+.picker-item-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 16px;
+  border: 1.5px solid var(--ink);
+}
+.picker-item-details {
+  flex: 1;
+}
+.picker-item-name {
+  font-weight: 600;
+  font-size: 14px;
+}
+.picker-item-sub {
+  font-size: 11px;
+  opacity: 0.7;
+}
+.picker-item-action {
+  font-family: var(--font-display);
+  font-size: 12px;
+  color: var(--moonshot-purple);
+}
+.picker-empty {
+  text-align: center;
+  padding: 24px;
+  opacity: 0.7;
+  font-size: 14px;
+}
+
+/* ── Onboarding Overlay ─────────────────────────────────── */
 .overlay {
   position: absolute;
   inset: 0;
@@ -194,30 +539,31 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 20;
+  z-index: 50;
   color: var(--cream);
   text-align: center;
-  padding: 28px;
+  padding: 24px;
 }
 .overlay .camera {
-  width: 120px;
-  height: 120px;
+  width: 100px;
+  height: 100px;
   border-radius: 50%;
   border: 3px solid var(--cream);
-  margin: 0 auto 18px;
+  margin: 0 auto 16px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 .overlay h1 {
   font-family: var(--font-display);
-  font-size: 26px;
+  font-size: 24px;
   margin: 0 0 10px;
   letter-spacing: 0.5px;
 }
 .overlay p {
-  font-size: 15px;
+  font-size: 14px;
   max-width: 320px;
-  margin: 0 auto 22px;
+  margin: 0 auto 20px;
   opacity: 0.9;
+  line-height: 1.4;
 }

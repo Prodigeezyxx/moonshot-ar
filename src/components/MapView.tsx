@@ -5,6 +5,7 @@ import {
   type PointerEvent
 } from 'react'
 import { ZONES, BOOTHS, zoneById } from '../data/venue'
+import { type RouteResult } from '../utils/pathfinding'
 
 const CX = 320
 const CY = 320
@@ -25,7 +26,6 @@ function polar(cx: number, cy: number, r: number, deg: number) {
   return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) }
 }
 
-// Polygon approximation of an annulus sector (robust, no arc sweep-flag fuss).
 function sectorPoints(
   cx: number,
   cy: number,
@@ -50,14 +50,21 @@ function sectorPoints(
 }
 
 export interface SelectInfo {
+  id: string
+  nodeId: string
   title: string
   description: string
+  type: 'zone' | 'booth'
 }
 
 export default function MapView({
-  onSelect
+  onSelect,
+  activeRoute,
+  currentLocation
 }: {
   onSelect: (info: SelectInfo) => void
+  activeRoute: RouteResult | null
+  currentLocation: { x: number; y: number; name: string }
 }) {
   const svgRef = useRef<SVGSVGElement>(null)
   const dragRef = useRef<{ x: number; y: number } | null>(null)
@@ -102,140 +109,223 @@ export default function MapView({
     dragRef.current = null
   }
 
+  const resetView = () => {
+    setVb({ x: 0, y: 0, w: 640, h: 640 })
+  }
+
+  // Construct SVG Path string from active route nodes
+  const routePathD = activeRoute && activeRoute.pathNodes.length > 1
+    ? activeRoute.pathNodes.reduce((acc, node, idx) => {
+        return idx === 0 ? `M ${node.x} ${node.y}` : `${acc} L ${node.x} ${node.y}`
+      }, '')
+    : ''
+
   return (
-    <svg
-      ref={svgRef}
-      viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`}
-      onWheel={onWheel}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={endDrag}
-      onPointerLeave={endDrag}
-      role="img"
-      aria-label="National Theatre Lagos floorplan — five zones, five sponsor booths"
-    >
-      {/* drum */}
-      <circle cx={CX} cy={CY} r={R_OUT} fill="#EDE7F9" stroke="#111827" strokeWidth="3" />
+    <div className="map-container">
+      <svg
+        ref={svgRef}
+        viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`}
+        onWheel={onWheel}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={endDrag}
+        onPointerLeave={endDrag}
+        role="img"
+        aria-label="National Theatre Lagos floorplan — five zones, five sponsor booths"
+      >
+        {/* Outer drum */}
+        <circle cx={CX} cy={CY} r={R_OUT} fill="#EDE7F9" stroke="#111827" strokeWidth="3" />
 
-      {/* main bowl (hero zone) */}
-      <circle
-        cx={CX}
-        cy={CY}
-        r={R_IN}
-        fill={zoneById('main-bowl').color}
-        style={{ cursor: 'pointer' }}
-        onClick={() =>
-          onSelect({
-            title: zoneById('main-bowl').name,
-            description: zoneById('main-bowl').description
-          })
-        }
-      />
-
-      {/* outer zone sectors */}
-      {ZONE_SECTORS.map((s) => (
-        <polygon
-          key={s.id}
-          points={sectorPoints(CX, CY, R_IN, R_OUT, s.a1, s.a2)}
-          fill={zoneById(s.id).color}
+        {/* Main Bowl (hero zone) */}
+        <circle
+          cx={CX}
+          cy={CY}
+          r={R_IN}
+          fill={zoneById('main-bowl').color}
           style={{ cursor: 'pointer' }}
           onClick={() =>
             onSelect({
-              title: zoneById(s.id).name,
-              description: zoneById(s.id).description
+              id: 'main-bowl',
+              nodeId: 'zone-main-stage',
+              title: zoneById('main-bowl').name,
+              description: zoneById('main-bowl').description,
+              type: 'zone'
             })
           }
         />
-      ))}
 
-      {/* corridor rings + radial corridors (the "atrium" texture) */}
-      <circle
-        cx={CX}
-        cy={CY}
-        r={225}
-        fill="none"
-        stroke="#111827"
-        strokeWidth="1.5"
-        strokeDasharray="6 6"
-        opacity="0.35"
-      />
-      {RADIALS.map((a) => {
-        const p = polar(CX, CY, R_OUT, a)
-        const q = polar(CX, CY, R_IN, a)
-        return (
-          <line
-            key={a}
-            x1={q.x}
-            y1={q.y}
-            x2={p.x}
-            y2={p.y}
-            stroke="#111827"
-            strokeWidth="1.5"
-            strokeDasharray="6 6"
-            opacity="0.35"
-          />
-        )
-      })}
-
-      {/* sponsor booths */}
-      {BOOTHS.map((b) => (
-        <g
-          key={b.id}
-          style={{ cursor: 'pointer' }}
-          onClick={() =>
-            onSelect({
-              title: `${b.name} — Sponsor Booth`,
-              description: 'Check-in for XP arrives in Phase 4 (QR fallback).'
-            })
+        {/* Outer zone sectors */}
+        {ZONE_SECTORS.map((s) => {
+          const nodeMapping: Record<string, string> = {
+            'hall-xyz': 'zone-hall-xyz',
+            'startup-festival': 'zone-startup-festival',
+            'studios': 'zone-studios'
           }
-        >
-          <circle cx={b.x} cy={b.y} r={13} fill="#111827" />
-          <circle cx={b.x} cy={b.y} r={6} fill="#F5A623" />
-          <text
-            x={b.x}
-            y={b.y - 20}
-            textAnchor="middle"
-            className="booth-label"
-            fill="#111827"
+          return (
+            <polygon
+              key={s.id}
+              points={sectorPoints(CX, CY, R_IN, R_OUT, s.a1, s.a2)}
+              fill={zoneById(s.id).color}
+              style={{ cursor: 'pointer' }}
+              onClick={() =>
+                onSelect({
+                  id: s.id,
+                  nodeId: nodeMapping[s.id] || 'zone-main-stage',
+                  title: zoneById(s.id).name,
+                  description: zoneById(s.id).description,
+                  type: 'zone'
+                })
+              }
+            />
+          )
+        })}
+
+        {/* Corridor rings + radial corridors */}
+        <circle
+          cx={CX}
+          cy={CY}
+          r={225}
+          fill="none"
+          stroke="#111827"
+          strokeWidth="1.5"
+          strokeDasharray="6 6"
+          opacity="0.35"
+        />
+        {RADIALS.map((a) => {
+          const p = polar(CX, CY, R_OUT, a)
+          const q = polar(CX, CY, R_IN, a)
+          return (
+            <line
+              key={a}
+              x1={q.x}
+              y1={q.y}
+              x2={p.x}
+              y2={p.y}
+              stroke="#111827"
+              strokeWidth="1.5"
+              strokeDasharray="6 6"
+              opacity="0.35"
+            />
+          )
+        })}
+
+        {/* Sponsor booths */}
+        {BOOTHS.map((b) => (
+          <g
+            key={b.id}
+            style={{ cursor: 'pointer' }}
+            onClick={() =>
+              onSelect({
+                id: b.id,
+                nodeId: `booth-${b.id}`,
+                title: `${b.name} — Sponsor Booth`,
+                description: 'Branded interactive checkpoint & spatial anchor.',
+                type: 'booth'
+              })
+            }
           >
-            {b.name}
+            <circle cx={b.x} cy={b.y} r={14} fill="#111827" />
+            <circle cx={b.x} cy={b.y} r={7} fill="#F5A623" />
+            <text
+              x={b.x}
+              y={b.y - 20}
+              textAnchor="middle"
+              className="booth-label"
+              fill="#111827"
+            >
+              {b.name}
+            </text>
+          </g>
+        ))}
+
+        {/* Active Route Render Line */}
+        {routePathD && (
+          <g className="route-layer">
+            <path
+              d={routePathD}
+              fill="none"
+              stroke="#111827"
+              strokeWidth="10"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path
+              d={routePathD}
+              fill="none"
+              stroke="#F5A623"
+              strokeWidth="6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="animated-route-stroke"
+            />
+            {/* Route waypoints */}
+            {activeRoute?.pathNodes.map((n, idx) => (
+              <circle
+                key={n.id + idx}
+                cx={n.x}
+                cy={n.y}
+                r={idx === activeRoute.pathNodes.length - 1 ? 8 : 4}
+                fill={idx === activeRoute.pathNodes.length - 1 ? '#E85D3F' : '#111827'}
+                stroke="#FAF3E0"
+                strokeWidth="2"
+              />
+            ))}
+          </g>
+        )}
+
+        {/* "You Are Here" position pin */}
+        <g className="yah" transform={`translate(${currentLocation.x}, ${currentLocation.y})`}>
+          <circle cx={0} cy={0} r={16} fill="#F5A623" stroke="#111827" strokeWidth="3" />
+          <circle cx={0} cy={0} r={28} fill="none" stroke="#F5A623" strokeWidth="2.5" />
+          <text x={0} y={38} textAnchor="middle" className="booth-label" fill="#111827">
+            YOU ARE HERE
           </text>
         </g>
-      ))}
 
-      {/* you-are-here (placeholder — QR-sourced for now) */}
-      <g className="yah">
-        <circle cx={320} cy={500} r={16} fill="#F5A623" stroke="#111827" strokeWidth="3" />
-        <circle cx={320} cy={500} r={30} fill="none" stroke="#F5A623" strokeWidth="2" />
-        <text x={320} y={542} textAnchor="middle" className="booth-label" fill="#111827">
-          YOU ARE HERE
+        {/* Zone Labels */}
+        <text x={320} y={324} textAnchor="middle" className="zone-label" fill="#FAF3E0">
+          MAIN BOWL
         </text>
-      </g>
+        <text x={320} y={88} textAnchor="middle" className="zone-label" fill="#FAF3E0">
+          HALL XYZ
+        </text>
+        <text x={548} y={314} textAnchor="middle" className="zone-label" fill="#FAF3E0">
+          STARTUP
+        </text>
+        <text x={548} y={331} textAnchor="middle" className="zone-label" fill="#FAF3E0">
+          FESTIVAL
+        </text>
+        <text x={92} y={314} textAnchor="middle" className="zone-label" fill="#111827">
+          STUDIOS
+        </text>
+        <text x={92} y={331} textAnchor="middle" className="zone-label" fill="#111827">
+          2 &amp; 3
+        </text>
+        <text x={320} y={470} textAnchor="middle" className="zone-label" fill="#111827" opacity="0.8">
+          ATRIUM RING
+        </text>
+      </svg>
 
-      {/* zone labels */}
-      <text x={320} y={324} textAnchor="middle" className="zone-label" fill="#FAF3E0">
-        MAIN BOWL
-      </text>
-      <text x={320} y={88} textAnchor="middle" className="zone-label" fill="#FAF3E0">
-        HALL XYZ
-      </text>
-      <text x={548} y={314} textAnchor="middle" className="zone-label" fill="#FAF3E0">
-        STARTUP
-      </text>
-      <text x={548} y={331} textAnchor="middle" className="zone-label" fill="#FAF3E0">
-        FESTIVAL
-      </text>
-      <text x={92} y={314} textAnchor="middle" className="zone-label" fill="#111827">
-        STUDIOS
-      </text>
-      <text x={92} y={331} textAnchor="middle" className="zone-label" fill="#111827">
-        2 &amp; 3
-      </text>
-      <text x={320} y={470} textAnchor="middle" className="zone-label" fill="#111827" opacity="0.8">
-        ATRIUM RING
-      </text>
-    </svg>
+      {/* Floating Map Controls for Mobile */}
+      <div className="map-floating-controls">
+        <button
+          className="ctrl-btn"
+          onClick={() => setVb((v) => ({ ...v, w: Math.max(200, v.w * 0.8), h: Math.max(200, v.h * 0.8) }))}
+          aria-label="Zoom in"
+        >
+          +
+        </button>
+        <button
+          className="ctrl-btn"
+          onClick={() => setVb((v) => ({ ...v, w: Math.min(2000, v.w * 1.25), h: Math.min(2000, v.h * 1.25) }))}
+          aria-label="Zoom out"
+        >
+          −
+        </button>
+        <button className="ctrl-btn" onClick={resetView} aria-label="Reset view">
+          🎯
+        </button>
+      </div>
+    </div>
   )
 }
-
-export { ZONES }
