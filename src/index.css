@@ -1,0 +1,223 @@
+:root {
+  /* Moonshot brand tokens (ARCHITECTURE.md §6a) */
+  --moonshot-purple: #3f0f8a;
+  --cream: #faf3e0;
+  --action-yellow: #f5a623;
+  --mint-green: #9ad5b1;
+  --deep-teal: #2e9d8f;
+  --ink: #111827;
+  --lavender: #ede7f9;
+  --signal-orange: #e85d3f;
+
+  --font-display: 'Archivo Black', 'Arial Black', sans-serif;
+  --font-body: 'Poppins', system-ui, -apple-system, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--cream);
+  color: var(--ink);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* ── Header ─────────────────────────────────────────────── */
+.header {
+  background: var(--moonshot-purple);
+  color: var(--cream);
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.brand {
+  font-family: var(--font-display);
+  font-size: 20px;
+  letter-spacing: 0.5px;
+  line-height: 1.1;
+}
+.brand small {
+  display: block;
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.85;
+}
+.header .tag {
+  font-family: var(--font-display);
+  font-size: 10px;
+  border: 2px solid var(--cream);
+  border-radius: 999px;
+  padding: 5px 10px;
+  opacity: 0.9;
+}
+
+/* ── Map ────────────────────────────────────────────────── */
+.map-wrap {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: var(--cream);
+}
+.map-wrap svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+  user-select: none;
+}
+
+.zone-label {
+  font-family: var(--font-display);
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  pointer-events: none;
+}
+.booth-label {
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 600;
+  pointer-events: none;
+}
+.yah {
+  animation: pulse 1.8s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* ── HUD ────────────────────────────────────────────────── */
+.hud {
+  background: var(--cream);
+  border-top: 3px solid var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+}
+.hud-pill {
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-weight: 600;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #fff;
+}
+.hud-pill .num {
+  font-family: var(--font-display);
+  color: var(--moonshot-purple);
+}
+.hud-pill.accent {
+  background: var(--action-yellow);
+}
+.hud-spacer {
+  flex: 1;
+}
+
+/* ── Bottom sheet ───────────────────────────────────────── */
+.sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--cream);
+  border-top: 3px solid var(--ink);
+  padding: 16px 18px 20px;
+  box-shadow: 0 -8px 0 rgba(17, 24, 39, 0.15);
+  z-index: 10;
+}
+.sheet h2 {
+  font-family: var(--font-display);
+  font-size: 18px;
+  margin: 0 0 6px;
+  letter-spacing: 0.5px;
+}
+.sheet p {
+  margin: 0 0 14px;
+  font-size: 14px;
+}
+.sheet .hint {
+  font-size: 12px;
+  opacity: 0.65;
+  margin: 0 0 12px;
+}
+.sheet .row {
+  display: flex;
+  gap: 10px;
+}
+.btn {
+  border: 3px solid var(--ink);
+  border-radius: 16px;
+  padding: 12px 16px;
+  font-weight: 600;
+  font-size: 14px;
+  font-family: var(--font-body);
+  cursor: pointer;
+  background: #fff;
+  color: var(--ink);
+}
+.btn.primary {
+  background: var(--action-yellow);
+  flex: 1;
+}
+
+/* ── Onboarding overlay ─────────────────────────────────── */
+.overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(63, 15, 138, 0.96);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+  color: var(--cream);
+  text-align: center;
+  padding: 28px;
+}
+.overlay .camera {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  border: 3px solid var(--cream);
+  margin: 0 auto 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.overlay h1 {
+  font-family: var(--font-display);
+  font-size: 26px;
+  margin: 0 0 10px;
+  letter-spacing: 0.5px;
+}
+.overlay p {
+  font-size: 15px;
+  max-width: 320px;
+  margin: 0 auto 22px;
+  opacity: 0.9;
+}

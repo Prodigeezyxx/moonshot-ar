@@ -6,9 +6,24 @@ venue is scanned) with a QR check-in fallback, and a gamification layer
 (XP, quests, badges, realtime leaderboard) built on a single shared data
 source.
 
-Status: **planning complete, not yet built.** See `ARCHITECTURE.md` and
-`ROADMAP.md` for the full spec and phased build plan. This README will grow a
-"Getting started" section once Phase 1 scaffolding exists.
+Status: **Phase 1 built** — Vite + React + TS PWA scaffold, SVG floorplan
+(5 zones + 5 sponsor booths), pan/zoom map, onboarding overlay, brand tokens.
+See `ARCHITECTURE.md` and `ROADMAP.md` for the full spec and phased plan.
+
+## Getting started
+
+```bash
+npm install        # once
+npm run dev        # live preview at http://localhost:5173 (hot reload)
+```
+
+- `npm run build` — production build (`dist/`, incl. PWA manifest + service worker)
+- `npm run preview` — serve the production build locally
+- `npm run typecheck` — TypeScript, no emit
+
+The dev server is exposed on the LAN too (`host: true`), so you can open the
+`Network:` URL Vite prints on your phone over the same wifi to test the
+installable-PWA flow.
 
 ## Docs
 
@@ -67,15 +82,27 @@ project targets **Niantic Studio** for any real VPS work, not 8th Wall.
 
 ## Status / next step
 
-Roadmap Phase 0 (planning) is done. Phase 1 (PWA scaffold + Map mode) starts
-on approval — see `ROADMAP.md` for the full phase breakdown and decision gates.
+Roadmap Phase 0 (planning) and Phase 1 (PWA scaffold + Map mode) are done.
+Phase 2 (venue graph + A* routing) is next — see `ROADMAP.md` for the full
+phase breakdown and decision gates.
 
 ## Repo layout
 
 ```
 moonshot-ar/
-├── ARCHITECTURE.md   # full system design & engineering spec
-├── ROADMAP.md        # phased build plan + backlog
-├── README.md         # this file
-└── docs/raw/         # source docs verbatim (master spec + moodboard)
+├── index.html            # Vite entry
+├── vite.config.ts        # Vite + vite-plugin-pwa
+├── tsconfig.json
+├── public/icon.svg       # target-O app icon
+├── src/
+│   ├── main.tsx          # React root
+│   ├── App.tsx           # shell: header, map, HUD, sheet, onboarding
+│   ├── index.css         # brand tokens (CSS variables) + layout
+│   ├── data/venue.ts     # zones + booths (hand-authored venue data)
+│   └── components/
+│       ├── MapView.tsx         # SVG floorplan, pan/zoom, pins
+│       └── OnboardingOverlay.tsx
+├── ARCHITECTURE.md       # full system design & engineering spec
+├── ROADMAP.md            # phased build plan + backlog
+└── docs/raw/             # source docs verbatim (master spec + moodboard)
 ```
