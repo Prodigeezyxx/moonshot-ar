@@ -25,16 +25,16 @@ export default function GamificationModal({
   return (
     <div className="gamification-modal-backdrop" onClick={onClose}>
       <div className="gamification-sheet" onClick={(e) => e.stopPropagation()}>
-        {/* Header Tabs */}
+        {/* Header Summary */}
         <div className="game-sheet-header">
           <div className="game-user-profile-summary">
-            <div className="game-avatar">🚀</div>
+            <div className="game-avatar-badge">ID</div>
             <div className="game-user-info">
               <div className="game-handle">{state.handle}</div>
               <div className="game-stats-row">
-                <span className="stat-highlight">Level {state.level}</span> •{' '}
-                <span className="xp-highlight">{state.xp} XP</span> •{' '}
-                <span className="rank-highlight">Rank #{state.rank}</span>
+                <span className="stat-pill">Level {state.level}</span>
+                <span className="stat-pill xp">{state.xp} XP</span>
+                <span className="stat-pill rank">Rank #{state.rank}</span>
               </div>
             </div>
           </div>
@@ -49,19 +49,19 @@ export default function GamificationModal({
             className={`game-tab-btn ${tab === 'leaderboard' ? 'active' : ''}`}
             onClick={() => setTab('leaderboard')}
           >
-            🏆 Leaderboard
+            Leaderboard
           </button>
           <button
             className={`game-tab-btn ${tab === 'quests' ? 'active' : ''}`}
             onClick={() => setTab('quests')}
           >
-            🎯 Quests ({state.quests.filter((q) => !q.completed).length})
+            Quests ({state.quests.filter((q) => !q.completed).length})
           </button>
           <button
             className={`game-tab-btn ${tab === 'passport' ? 'active' : ''}`}
             onClick={() => setTab('passport')}
           >
-            🎖️ Passport ({state.unlockedBadgeIds.length})
+            Passport ({state.unlockedBadgeIds.length})
           </button>
         </div>
 
@@ -69,21 +69,21 @@ export default function GamificationModal({
         {tab === 'leaderboard' && (
           <div className="leaderboard-list">
             <div className="leaderboard-intro">
-              Live Realtime Scores • Check in at stages &amp; sponsor booths to climb
+              Verified Event Standings • Live Cloudflare Edge Synchronized
             </div>
             {leaderboard.map((item) => (
               <div
                 key={item.userId}
                 className={`leaderboard-row ${item.isCurrentUser ? 'current-user-highlight' : ''}`}
               >
-                <div className={`rank-disc rank-${item.rank}`}>
-                  {item.rank === 1 ? '🥇' : item.rank === 2 ? '🥈' : item.rank === 3 ? '🥉' : item.rank}
+                <div className="rank-num-badge">
+                  #{item.rank}
                 </div>
                 <div className="lead-user-info">
                   <div className="lead-handle">
                     {item.handle} {item.isCurrentUser && <span className="you-tag">(YOU)</span>}
                   </div>
-                  <div className="lead-badges">🎖️ {item.badgesCount} Badges</div>
+                  <div className="lead-badges">{item.badgesCount} Badges Verified</div>
                 </div>
                 <div className="lead-xp">{item.xp} XP</div>
               </div>
@@ -97,7 +97,7 @@ export default function GamificationModal({
             {state.quests.map((q) => (
               <div key={q.id} className={`quest-card ${q.completed ? 'completed' : ''}`}>
                 <div className="quest-header">
-                  <span className="quest-badge-tag">{q.completed ? '✅ COMPLETED' : 'IN PROGRESS'}</span>
+                  <span className="quest-badge-tag">{q.completed ? 'COMPLETED' : 'IN PROGRESS'}</span>
                   <span className="quest-reward-xp">+{q.xpReward} XP</span>
                 </div>
                 <div className="quest-name">{q.name}</div>
@@ -109,31 +109,31 @@ export default function GamificationModal({
                   />
                 </div>
                 <div className="quest-progress-label">
-                  Progress: {q.currentCount} / {q.targetCount} visited
+                  Verification: {q.currentCount} / {q.targetCount} targets reached
                 </div>
               </div>
             ))}
           </div>
         )}
 
-        {/* Tab 3: Digital Event Passport & Badges */}
+        {/* Tab 3: Digital Passport */}
         {tab === 'passport' && (
           <div className="passport-container">
             <div className="passport-card-hero">
-              <div className="pass-title">MOONSHOT WAYFINDER PASSPORT</div>
-              <div className="pass-sub">Digital Attendee Credentials</div>
+              <div className="pass-title">ATTENDEE CREDENTIAL PASSPORT</div>
+              <div className="pass-sub">Digital Physical Verification Record</div>
               <div className="pass-stats-grid">
                 <div className="pass-stat-box">
                   <div className="stat-num">{state.visitedZones.length} / 5</div>
-                  <div className="stat-lbl">Zones Explored</div>
+                  <div className="stat-lbl">Zones Verified</div>
                 </div>
                 <div className="pass-stat-box">
                   <div className="stat-num">{state.visitedBooths.length} / 5</div>
                   <div className="stat-lbl">Booths Visited</div>
                 </div>
                 <div className="pass-stat-box">
-                  <div className="stat-num">{state.unlockedBadgeIds.length}</div>
-                  <div className="stat-lbl">Badges Earned</div>
+                  <div className="stat-num">{state.unlockedBadgeIds.length} / 4</div>
+                  <div className="stat-lbl">Badges Issued</div>
                 </div>
               </div>
             </div>
@@ -144,9 +144,11 @@ export default function GamificationModal({
                 const isUnlocked = state.unlockedBadgeIds.includes(b.id)
                 return (
                   <div key={b.id} className={`badge-item ${isUnlocked ? 'unlocked' : 'locked'}`}>
-                    <div className="badge-icon-wrap">{isUnlocked ? b.icon : '🔒'}</div>
-                    <div className="badge-name">{b.name}</div>
-                    <div className="badge-desc">{b.description}</div>
+                    <div className="badge-status-icon">{isUnlocked ? '✓' : '—'}</div>
+                    <div className="badge-content-col">
+                      <div className="badge-name">{b.name}</div>
+                      <div className="badge-desc">{b.description}</div>
+                    </div>
                   </div>
                 )
               })}

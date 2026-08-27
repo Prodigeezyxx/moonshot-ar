@@ -36,10 +36,59 @@ export function useGamification() {
     }
   })
 
-  // Sync to localStorage
+  const [remoteLeaderboard, setRemoteLeaderboard] = useState<LeaderboardEntry[]>([])
+
+  // Fetch live leaderboard from Cloudflare Worker
+  const fetchLiveLeaderboard = useCallback(async () => {
+    try {
+      const res = await fetch('/api/leaderboard')
+      if (res.ok) {
+        const data = await res.json()
+        if (data && Array.isArray(data.leaderboard)) {
+          setRemoteLeaderboard(data.leaderboard)
+        }
+      }
+    } catch (e) {
+      // Graceful offline fallback
+      console.warn('Could not reach /api/leaderboard, using local sync fallback')
+    }
+  }, [])
+
+  // Sync state to localStorage & Cloudflare Worker on change
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
-  }, [state])
+
+    // Background sync to Worker
+    fetch('/api/sync-user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: state.userId,
+        handle: state.handle,
+        xp: state.xp,
+        level: state.level,
+        unlockedBadgeIds: state.unlockedBadgeIds,
+        visitedZones: state.visitedZones,
+        visitedBooths: state.visitedBooths
+      })
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data && data.rank && data.rank !== state.rank) {
+          setState((prev) => ({ ...prev, rank: data.rank }))
+        }
+      })
+      .catch(() => {
+        // Silent catch for offline PWA behavior
+      })
+  }, [state.xp, state.level, state.unlockedBadgeIds.length, state.visitedZones.length, state.visitedBooths.length])
+
+  // Periodic poll for leaderboard updates
+  useEffect(() => {
+    fetchLiveLeaderboard()
+    const interval = setInterval(fetchLiveLeaderboard, 15000)
+    return () => clearInterval(interval)
+  }, [fetchLiveLeaderboard])
 
   // Record Check-in & Evaluate Quests + Badges
   const recordCheckIn = useCallback(
@@ -104,6 +153,21 @@ export function useGamification() {
         const nextLevel = Math.floor(totalXP / 100) + 1
         const nextRank = Math.max(1, Math.min(prev.rank, 42 - Math.floor(totalXP / 40)))
 
+        // Dispatch check-in call to Worker backend
+        fetch('/api/check-in', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: prev.userId,
+            handle: prev.handle,
+            targetId,
+            targetName: name,
+            targetType: type,
+            xpGained: addedXP + bonusXP,
+            unlockedBadgeIds: newUnlockedBadges
+          })
+        }).catch(() => {})
+
         return {
           ...prev,
           xp: totalXP,
@@ -119,8 +183,35 @@ export function useGamification() {
     []
   )
 
-  // Generate dynamic mock leaderboard combining real user state
+  // Combined Leaderboard (Remote if available, local blend fallback)
   const getLeaderboard = useCallback((): LeaderboardEntry[] => {
+    if (remoteLeaderboard.length > 0) {
+      let foundUser = false
+      const formatted = remoteLeaderboard.map((u) => {
+        const isCurrent = u.userId === state.userId
+        if (isCurrent) foundUser = true
+        return {
+          ...u,
+          isCurrentUser: isCurrent
+        }
+      })
+
+      if (!foundUser) {
+        formatted.push({
+          userId: state.userId,
+          handle: state.handle,
+          xp: state.xp,
+          badgesCount: state.unlockedBadgeIds.length,
+          rank: state.rank,
+          isCurrentUser: true
+        })
+        formatted.sort((a, b) => b.xp - a.xp)
+        return formatted.map((entry, idx) => ({ ...entry, rank: idx + 1 }))
+      }
+      return formatted
+    }
+
+    // Default mock fallback
     const mockUsers: LeaderboardEntry[] = [
       { userId: 'usr_top1', handle: '@adeola_dev', xp: 480, badgesCount: 4, rank: 1 },
       { userId: 'usr_top2', handle: '@chinonso_xr', xp: 410, badgesCount: 3, rank: 2 },
@@ -138,7 +229,6 @@ export function useGamification() {
       isCurrentUser: true
     }
 
-    // Insert current user and sort
     const all = [...mockUsers.filter((u) => u.userId !== state.userId), currentEntry].sort(
       (a, b) => b.xp - a.xp
     )
@@ -147,7 +237,7 @@ export function useGamification() {
       ...entry,
       rank: idx + 1
     }))
-  }, [state])
+  }, [remoteLeaderboard, state])
 
   return {
     state,

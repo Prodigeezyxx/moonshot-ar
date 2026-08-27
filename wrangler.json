@@ -7,5 +7,12 @@
     "binding": "ASSETS",
     "html_handling": "auto-trailing-slash",
     "not_found_handling": "single-page-application"
-  }
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "moonshot-db",
+      "database_id": "efa80e1f-be3c-44fb-bb5a-d5c351a14924"
+    }
+  ]
 }
